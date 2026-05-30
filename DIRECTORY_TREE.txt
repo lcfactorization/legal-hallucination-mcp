@@ -1,0 +1,64 @@
+legal-hallucination-mcp/                          # v0.1.0
+├── .env.example                                  # 环境变量模板
+├── .gitignore                                    # Git忽略规则
+├── .github/
+│   └── workflows/
+│       └── ci.yml                                # GitHub Actions CI/CD流水线
+├── CHANGELOG.md
+├── pyproject.toml                                # 项目元数据 & 依赖（版本0.1.0）
+├── README.md
+├── README_EN.md
+│
+├── scripts/                                      # 可执行脚本（统一路径解析）
+│   ├── _paths.py                                 # 公共环境变量路径解析模块
+│   ├── batch_fix_h2.py                           # H-2维度批量修复
+│   ├── extract_h2.py                             # H-2维度提取
+│   ├── multi_version_scan.py                     # 多版本并行扫描
+│   ├── run_detection.py                          # 单次检测入口
+│   ├── run_detection_legacy.py                   # 旧版检测入口
+│   ├── run_detection_v41.py                      # V41版本检测
+│   ├── scan_v42.py                               # V42版本扫描
+│   ├── update_evidence_manifest.py               # 证据清单交互式管理CLI
+│   ├── vault_mirror_manager.py                   # Vault镜像管理器
+│   ├── verify_agent.py                           # 合规审计脚本
+│   ├── verify_v40.py                             # V40验证
+│   └── verify_v42_fixed.py                       # V42修复后验证
+│
+├── src/
+│   └── legal_hallucination_mcp/                  # 核心包
+│       ├── __init__.py                           # v0.1.0
+│       ├── claim_parser.py                       # 诉请解析器（纯正则）
+│       ├── config.py                             # 配置管理 & 规则模式定义
+│       ├── cross_reference_engine.py             # 交叉引用引擎
+│       ├── evidence_index.py                     # 证据索引
+│       ├── evidence_manifest_updater.py          # 证据清单更新器
+│       ├── law_citation_checker.py               # 法条引用检查器
+│       ├── law_knowledge_base.py                 # 法律法规知识库
+│       ├── models.py                             # 数据模型 v0.1.0
+│       ├── report_builder.py                     # 报告生成器
+│       ├── response_parser.py                    # LLM响应解析器
+│       ├── rule_engine.py                        # 规则引擎（确定性检测）
+│       ├── server.py                             # MCP服务器（线程安全，含详细锁日志）
+│       ├── skill_runner.py                       # 技能运行器
+│       ├── vector_index.py                       # 向量索引
+│       ├── verify_agent.py                       # 合规审计Agent
+│       ├── web_verifier.py                       # 网络验证器
+│       ├── workflow_orchestrator.py              # 工作流编排器
+│       └── skills/
+│           └── dimensions/                       # 维度提示词模板
+│               ├── h1_sourceless_fabrication.md
+│               ├── h2_law_misapplication.md
+│               ├── h3_evidence_chain_break.md
+│               ├── h4_subjective_rhetoric.md
+│               ├── h5_claim_boundary_breach.md
+│               └── h6_nontext_evidence_fail.md
+│
+├── tests/                                        # 测试套件（31个测试用例）
+│   ├── __init__.py
+│   ├── test_adversarial.py                       # 对抗性测试
+│   ├── test_integration.py                       # 集成测试
+│   ├── test_orchestration.py                     # 编排测试
+│   └── test_regex_fix.py                         # 正则修复测试
+│
+└── [vault_mirror/]                               # Vault镜像（.gitignore排除）
+    └── [案件/]                                   # 法律法规 & 证据副本

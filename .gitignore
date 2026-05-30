@@ -1,0 +1,45 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.pytest_cache/
+.ruff_cache/
+
+.env
+.venv/
+venv/
+env/
+
+src/.cache/
+*.json.bak
+
+dist/
+build/
+*.egg-info/
+*.egg
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+*.log
+
+output/
+scripts/output/
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+detection_result_*.json
+
+# ========== vault_mirror: 仅保留目录结构，所有文件均为隐私/版权敏感信息 ==========
+# 忽略 vault_mirror 下所有内容
+vault_mirror/**
+# 重新包含所有目录（使 git 可遍历进入）
+!vault_mirror/**/
+# 但允许 .gitkeep 占位文件（用于在 git 中保留空目录结构）
+!vault_mirror/**/.gitkeep

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "legal-hallucination-mcp"
+version = "0.1.0"
+description = "MCP Server for legal document hallucination detection — Bridge Architecture, NO LLM API calls"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "Legal Hallucination MCP Team"}]
+keywords = ["mcp", "legal", "hallucination", "detection"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+    "cn2an>=0.5.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+legal-hallucination-mcp = "legal_hallucination_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/legal_hallucination_mcp"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 200
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501", "E402", "F841"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
