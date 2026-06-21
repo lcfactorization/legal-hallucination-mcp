@@ -569,12 +569,12 @@ class ReportBuilder:
                     suggestion=suggestion,
                 )
 
-            lines.append("> [!WARNING]")
+            lines.append("> [!Warning]")
             lines.append("> 交叉验证发现不一致项，请务必核对原始文件后再行修改。")
             lines.append("> 人工审核时应将判决书陈述与原始证据逐字比对，确保无遗漏。")
             lines.append("")
         else:
-            lines.append("> [!TIP]")
+            lines.append("> [!Tip]")
             lines.append("> 交叉验证未发现问题，或未启用交叉验证功能。")
             lines.append("> 建议在检测时提供法律法规目录路径以启用完整的交叉验证。")
             lines.append("")
@@ -606,7 +606,7 @@ class ReportBuilder:
 
             replaced_laws = [lv for lv in law_verifications if not lv.get("is_current", True)]
             if replaced_laws:
-                lines.append("> [!CAUTION]")
+                lines.append("> [!Danger]")
                 lines.append("> 检测到已废止法律的引用！已废止法律的引用属于法律适用错误，"
                              "将导致裁判依据不成立。必须立即替换为现行有效的法律。")
                 lines.append("")
@@ -617,7 +617,7 @@ class ReportBuilder:
 
             not_found = [lv for lv in law_verifications if not lv.get("local_found")]
             if not_found:
-                lines.append("> [!WARNING]")
+                lines.append("> [!Warning]")
                 lines.append("> 以下法条在本地法律知识库中未找到，需联网验证：")
                 lines.append("")
                 for lv in not_found:
@@ -647,7 +647,7 @@ class ReportBuilder:
 
             suspected_fake = [cv for cv in case_verifications if not cv.get("is_real", True)]
             if suspected_fake:
-                lines.append("> [!CAUTION]")
+                lines.append("> [!Danger]")
                 lines.append("> 检测到疑似杜撰的案例案号！杜撰案例属于严重的幻觉，"
                              "将导致裁判依据不成立。")
                 lines.append("")
@@ -660,7 +660,7 @@ class ReportBuilder:
                 lines.append("")
 
         if not law_verifications and not case_verifications:
-            lines.append("> [!NOTE]")
+            lines.append("> [!Note]")
             lines.append("> 法律知识库验证未启用或未发现问题。")
             lines.append("> 建议在检测时提供法律法规目录路径以启用完整的法律知识库验证。")
             lines.append("")
