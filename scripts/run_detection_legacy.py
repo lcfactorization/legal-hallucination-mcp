@@ -12,8 +12,8 @@ from _paths import get_vault_root, get_manifest_path, get_output_dir
 
 vault_root = get_vault_root()
 doc_paths = [
-    os.path.join(vault_root, 'V40_模拟二审判决书_苏06民终6271号劳动争议_20260525.md'),
-    os.path.join(vault_root, 'V42_模拟二审判决书_苏06民终6271号劳动争议_20260528.md'),
+    os.path.join(vault_root, 'V40_模拟二审判决书_苏06民终9101号劳动争议_20260525.md'),
+    os.path.join(vault_root, 'V42_模拟二审判决书_苏06民终9101号劳动争议_20260528.md'),
 ]
 
 manifest_path = get_manifest_path()

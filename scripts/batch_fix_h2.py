@@ -73,7 +73,7 @@ def fix_judgment_date(text: str) -> tuple[str, list[str]]:
     result = text
     pattern = r'一审2025年4月28日'
     if re.search(pattern, result):
-        result = re.sub(pattern, '一审法院于2025年4月28日作出（2025）苏0602民初4514号民事判决（见《一审判决书.md》）', result, count=1)
+        result = re.sub(pattern, '一审法院于2025年4月28日作出（2024）苏0602民初9102号民事判决（见《一审判决书.md》）', result, count=1)
         fixes.append("一审判决日期标注")
 
     return result, fixes
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     from _paths import get_vault_root
     vault_root = get_vault_root()
     docs = [
-        os.path.join(vault_root, "V42_模拟二审判决书_苏06民终6271号劳动争议_20260528.md"),
+        os.path.join(vault_root, "V42_模拟二审判决书_苏06民终9101号劳动争议_20260528.md"),
     ]
 
     for doc in docs:

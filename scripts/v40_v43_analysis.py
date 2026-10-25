@@ -42,11 +42,11 @@ LOCAL_LAW_DIR = os.path.join(PROJECT_ROOT, "vault_mirror", "案件", "法律法�
 OUTPUT_DIR = os.path.join(Path(__file__).resolve().parent, "output")
 
 DOCUMENTS: list[dict[str, str]] = [
-    {"label": "V43", "path": os.path.join(VAULT_ROOT, "V43_模拟二审判决书_苏06民终6271号劳动争议_20260528.md")},
-    {"label": "V42", "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V41", "path": os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V40P1", "path": os.path.join(VAULT_ROOT, "V40P1_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V40", "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终6271号劳动争议_20260525.md")},
+    {"label": "V43", "path": os.path.join(VAULT_ROOT, "V43_模拟二审判决书_苏06民终9101号劳动争议_20260528.md")},
+    {"label": "V42", "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V41", "path": os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V40P1", "path": os.path.join(VAULT_ROOT, "V40P1_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V40", "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终9101号劳动争议_20260525.md")},
 ]
 
 
@@ -172,7 +172,7 @@ def generate_comprehensive_report(results: list[DetailedScanResult], output_dir:
         "# V40~V43 模拟二审判决书综合幻觉分析报告",
         "",
         f"生成时间：{time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"案号：(2025)苏06民终6271号 劳动争议",
+        f"案号：(2024)苏06民终9101号 劳动争议",
         f"文档数量：{len(results)}",
         "",
         "---",

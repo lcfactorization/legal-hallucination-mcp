@@ -308,11 +308,11 @@ Add to `~/.workbuddy/mcp.json`:
     "legal-hallucination": {
       "command": "python",
       "args": ["-m", "legal_hallucination_mcp.server"],
-      "cwd": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp",
+      "cwd": "<VAULT>\\legal-hallucination-mcp",
       "env": {
-        "PYTHONPATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp\\src",
-        "EVIDENCE_MANIFEST_PATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\.trae\\evidence_manifest.md",
-        "VAULT_ROOT": "C:\\Users\\stere\\Documents\\Obsidian Vault"
+        "PYTHONPATH": "<VAULT>\\legal-hallucination-mcp\\src",
+        "EVIDENCE_MANIFEST_PATH": "<VAULT>\\.trae\\evidence_manifest.md",
+        "VAULT_ROOT": "<VAULT>"
       }
     }
   }
@@ -338,9 +338,9 @@ After configuration, you must manually enable the server in your MCP client (usu
 Tool: run_rule_engine_full
 Parameters:
   document_text: <full judgment text>
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
-  document_name: "V42_Simulated_Judgment_Su06MinZhong6271"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
+  document_name: "V42_Simulated_Judgment_Su06MinZhong9101"
   content_summary: "Labor dispute second instance simulated judgment"
   agent_name: "TraeCN"
   llm_version: "DSV4P"
@@ -375,9 +375,9 @@ Report saved to `output/` with filename format:
 
 ```bash
 python scripts/verify_agent.py \
-  --vault-root "C:\Users\stere\Documents\Obsidian Vault" \
-  --manifest "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md" \
-  --draft "C:\Users\stere\Documents\Obsidian Vault\output\V42_SimulatedJudgment.md"
+  --vault-root "<VAULT>" \
+  --manifest "<VAULT>\.trae\evidence_manifest.md" \
+  --draft "<VAULT>\output\V42_SimulatedJudgment.md"
 ```
 
 **Sample Output (PASSED)**:
@@ -451,7 +451,7 @@ Comparison report saved to output/multi_version_scan_report_20260530.md
 python -c "
 from legal_hallucination_mcp.server import init_case_workspace
 result = init_case_workspace(
-    vault_root='C:\\\\Users\\\\stere\\\\Documents\\\\Obsidian Vault',
+    vault_root='<VAULT>',
     case_name='Su06MinZhong9999',
     evidence_files=[
         'evidence/Evidence1_EmploymentContract.pdf',
@@ -467,8 +467,8 @@ print(result)
 **Sample Output**:
 ```
 [WorkspaceInit] Workspace initialization complete
-- Case directory: C:\Users\stere\Documents\Obsidian Vault\Su06MinZhong9999
-- Evidence manifest: C:\Users\stere\Documents\Obsidian Vault\Su06MinZhong9999\evidence_manifest.md
+- Case directory: <VAULT>\Su06MinZhong9999
+- Evidence manifest: <VAULT>\Su06MinZhong9999\evidence_manifest.md
 - Registered evidence: 3 items
 - Linked complaint: 1 item
 ```
@@ -502,8 +502,8 @@ MCP call:
 ```
 Tool: get_closed_universe_prompt
 Parameters:
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
 ```
 
 Returns a prompt text with the current case's full evidence list and mandatory evidence-binding rules.
@@ -719,7 +719,7 @@ The system dynamically loads valid evidence filenames from `evidence_manifest.md
 - `path/laws/LawName.md`
 
 ## Similar Cases
-- `path/cases/(2020)Su03MinZhong3088.md`
+- `path/cases/(2020)Su03MinZhong9104.md`
 ```
 
 ---

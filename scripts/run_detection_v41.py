@@ -15,7 +15,7 @@ from legal_hallucination_mcp.workflow_orchestrator import WorkflowOrchestrator
 from _paths import get_vault_root, get_manifest_path, get_law_dir
 
 VAULT_ROOT = get_vault_root()
-DOC_PATH = os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")
+DOC_PATH = os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")
 MANIFEST_PATH = get_manifest_path()
 LAW_DIR = get_law_dir()
 
@@ -97,7 +97,7 @@ if len(result.calculation_issues) > 10:
     print(f"  ... 还有 {len(result.calculation_issues) - 10} 项")
 
 output = {
-    "document": "V41_模拟二审判决书_苏06民终6271号劳动争议_20260527",
+    "document": "V41_模拟二审判决书_苏06民终9101号劳动争议_20260527",
     "total_flags": result.total_flags,
     "hallucination_score": result.hallucination_score,
     "risk_grade": result.risk_grade,
@@ -165,7 +165,7 @@ for heading in ["一、", "二、", "三、", "四、", "五、", "六、"]:
 sections["full_text"] = doc_text
 
 run = workflow.create_workflow(
-    document_name="V41_模拟二审判决书_苏06民终6271号",
+    document_name="V41_模拟二审判决书_苏06民终9101号",
     document_sections=sections,
     evidence_manifest_path=MANIFEST_PATH,
     vault_root=VAULT_ROOT,

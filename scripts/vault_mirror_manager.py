@@ -234,7 +234,7 @@ if __name__ == "__main__":
     test_paths = [
         ".trae/evidence_manifest.md",
         "案件/法律法规/法释〔2025〕12号 劳动争议司法解释二.md",
-        "类案/（2020）苏03民终3088号.md",
+        "类案/（2020）苏03民终9104号.md",
     ]
     for tp in test_paths:
         resolved, source = resolve_path(tp)

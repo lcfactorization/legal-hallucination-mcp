@@ -322,11 +322,11 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
     "legal-hallucination": {
       "command": "python",
       "args": ["-m", "legal_hallucination_mcp.server"],
-      "cwd": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp",
+      "cwd": "<VAULT>\\legal-hallucination-mcp",
       "env": {
-        "PYTHONPATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp\\src",
-        "EVIDENCE_MANIFEST_PATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\.trae\\evidence_manifest.md",
-        "VAULT_ROOT": "C:\\Users\\stere\\Documents\\Obsidian Vault"
+        "PYTHONPATH": "<VAULT>\\legal-hallucination-mcp\\src",
+        "EVIDENCE_MANIFEST_PATH": "<VAULT>\\.trae\\evidence_manifest.md",
+        "VAULT_ROOT": "<VAULT>"
       }
     }
   }
@@ -352,10 +352,10 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 调用工具: run_rule_engine_full
 参数:
   document_text: <判决书全文>
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
-  document_name: "V42_模拟二审判决书_苏06民终6271号"
-  content_summary: "苏06民终6271号劳动争议二审模拟判决书"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
+  document_name: "V42_模拟二审判决书_苏06民终9101号"
+  content_summary: "苏06民终9101号劳动争议二审模拟判决书"
   agent_name: "TraeCN"
   llm_version: "DSV4P"
   save_report: true
@@ -381,7 +381,7 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 ```
 
 生成的报告保存在 `output/` 目录，文件名格式：
-`TraeCN_DSV4P_苏06民终6271号劳动争议二审模拟判决书_V42_20260530.md`
+`TraeCN_DSV4P_苏06民终9101号劳动争议二审模拟判决书_V42_20260530.md`
 
 ### 示例二：命令行审计判决书草稿
 
@@ -389,9 +389,9 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 
 ```bash
 python scripts/verify_agent.py \
-  --vault-root "C:\Users\stere\Documents\Obsidian Vault" \
-  --manifest "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md" \
-  --draft "C:\Users\stere\Documents\Obsidian Vault\output\V42_模拟二审判决书.md"
+  --vault-root "<VAULT>" \
+  --manifest "<VAULT>\.trae\evidence_manifest.md" \
+  --draft "<VAULT>\output\V42_模拟二审判决书.md"
 ```
 
 **输出示例（AUDIT_PASSED）**：
@@ -465,7 +465,7 @@ python scripts/multi_version_scan.py
 python -c "
 from legal_hallucination_mcp.server import init_case_workspace
 result = init_case_workspace(
-    vault_root='C:\\\\Users\\\\stere\\\\Documents\\\\Obsidian Vault',
+    vault_root='<VAULT>',
     case_name='苏06民终9999号',
     evidence_files=[
         '证据材料/证据1_劳动合同.pdf',
@@ -481,8 +481,8 @@ print(result)
 **输出示例**：
 ```
 [WorkspaceInit] 工作区初始化完成
-- 案件目录: C:\Users\stere\Documents\Obsidian Vault\苏06民终9999号
-- 证据索引: C:\Users\stere\Documents\Obsidian Vault\苏06民终9999号\evidence_manifest.md
+- 案件目录: <VAULT>\苏06民终9999号
+- 证据索引: <VAULT>\苏06民终9999号\evidence_manifest.md
 - 已注册证据: 3 份
 - 已链接诉状: 1 份
 ```
@@ -516,8 +516,8 @@ python scripts/update_evidence_manifest.py --update "证据30" --desc "股东会
 ```
 调用工具: get_closed_universe_prompt
 参数:
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
 ```
 
 该工具返回一段可直接注入 Agent 系统提示的文本，包含当前案件的完整证据清单和强制证据绑定规则。
@@ -735,7 +735,7 @@ python scripts/update_evidence_manifest.py --update "证据30" --desc "股东会
 - `路径/法律法规/法律名称.md`
 
 ## 类案类
-- `路径/类案/（2020）苏03民终3088号.md`
+- `路径/类案/（2020）苏03民终9104号.md`
 ```
 
 ---
