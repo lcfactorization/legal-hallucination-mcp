@@ -1,5 +1,62 @@
 # 修改日志
 
+## 2026-10-26 V44 更新（v0.4.0）
+
+### 新增 H-7 / H-8 检测维度（P1）
+
+八维分类体系在原六维（H-1至H-6）基础上扩展两个"结构一致性"维度：
+
+| 维度 | 名称 | 权重 | 检测内容 |
+|:---|:---|:---:|:---|
+| H-7 | 裁判结果—援引依据一致性 | 0.075 | 逐判项检查说理支撑：判项关键词（金额/义务动词/确认对象）在说理段无呼应、说理段亦无相关《法规名》第X条引用 → critical |
+| H-8 | 诉请—判决回应一致性 | 0.075 | 逐项诉请与主文处置对齐：诉请"未回应"（含无理由不予理涉）→ high；"变更/增加诉请"表述未获主文与说理处理 → critical |
+
+**实现要点**：
+1. `config.py`：`HALLUCINATION_DIMENSIONS`/`DIMENSION_TITLES`/`DIMENSION_ORDER`/`DIMENSION_WEIGHTS` 扩至八维
+2. `rule_engine.py`：新增 `check_judgment_basis_consistency()` 与 `check_claim_response_consistency()` 检查方法（启发式文本对齐：金额呼应、义务对象名词呼应、字符 Jaccard 句级对齐、法条引用+义务动词四路判据），接入 `run_full_scan()` 与 `_group_flags_by_dimension()`，输出进入 `_calculate_score()` 罚分路径
+3. `section_extractor.py`（新模块）：原 `server._extract_sections` 的共享实现，供 MCP 工具层与规则引擎复用，避免循环导入；H-7/H-8 输入优先取其产出的 reasoning/judgment_main 段，空缺时回退四段式标题切分
+4. `server.py`：`run_rule_engine_full` 输出新增 `h7_h8_flags` 字段，供调用方将两维标志喂入 `calculate_hallucination_score` 的语义罚分路径（severity 系数沿用 critical 5 / high 3 / medium 1.5 / low 0.5 口径）
+5. `report_builder.py`：报告新增"十三、H-7"与"十四、H-8"章节，后续章节序号顺延；`skill_runner.py` 幻觉分类体系同步补全
+6. `RULE_ENGINE_PATTERNS` 为扁平规则组（按 h_code 归维，非按维度键控），无需新增两维规则组
+
+**权重再平衡**（和=1.00）：
+
+| 维度 | V43前 | V44 |
+|:---|:---:|:---:|
+| H-1 无源编造事实 | 0.25 | 0.22 |
+| H-2 法律适用错误 | 0.20 | 0.18 |
+| H-3 证据链断裂 | 0.20 | 0.18 |
+| H-4 主观臆断/修辞过度 | 0.10 | 0.08 |
+| H-5 诉求边界突破 | 0.20 | 0.15 |
+| H-6 非文本证据穿透失败 | 0.05 | 0.04 |
+| H-7 裁判结果—援引依据一致性 | — | 0.075 |
+| H-8 诉请—判决回应一致性 | — | 0.075 |
+
+`rule_engine._calculate_score` 的维度权重映射按同比例（×5）同步更新。
+
+### 法规库 .docx 加载支持
+
+`law_knowledge_base.load_from_directory()` 支持 `.docx` 法规文件：
+- 惰性导入 `python-docx`，按段落拼接提取纯文本后走既有 `_parse_law_articles`/`_parse_cases` 解析
+- python-docx 未安装时跳过 `.docx` 并汇总 warning 提示安装方式，**不加硬依赖**
+- `pyproject.toml` 新增可选依赖组：`[project.optional-dependencies] docx = ["python-docx>=1.1"]`
+
+### 日志卫生（P0）
+
+全项目 `logging.info` 中含 `[LOCK]` 的锁诊断日志共 20 处全部降级为 `logging.debug`（仅动 [LOCK] 类，其余日志不动），消除 INFO 级别下的锁诊断噪音。
+
+### 空目录清理
+
+项目根目录 `skills/`（仅含空子目录）与 `anchors/`（空目录）删除。`SkillLoader` 对缺失目录本就回退内置提示词（`load_system_skill` 返回空串、`list_dimensions` 返回空列表），行为不变。
+
+### 测试与版本
+
+- 新增 `tests/test_h7_h8.py`：维度数 6→8 断言、权重和=1.00、H-7/H-8 合成样例出 flag、severity 罚分系数（经 server 工具端到端）、报告章节、.docx 加载（含 monkeypatch 模拟 ImportError 的优雅跳过）
+- 既有测试样例均为合成数据，新增内容不含真实人名、真实公司名与完整真实案号
+- `pyproject.toml` version → 0.4.0
+
+---
+
 ## 2026-05-29 V42.3 更新
 
 ### 类案杜撰误报修复（P0级）

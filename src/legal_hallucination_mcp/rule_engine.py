@@ -37,6 +37,7 @@ from .models import (
     SyllogismBreakItem,
     TimeBarIssue,
 )
+from .section_extractor import extract_sections
 
 logger = logging.getLogger("legal-hallucination")
 
@@ -112,6 +113,8 @@ class RuleEngine:
         result.interest_base_items = extract_interest_base(document_text)
         result.calculation_issues = self.check_calculation_accuracy(document_text)
         result.claim_comparisons = self.build_claim_comparisons(document_text, complaint_text)
+        h7_flags = self.check_judgment_basis_consistency(document_text)
+        h8_flags = self.check_claim_response_consistency(document_text, complaint_text)
         self._check_procedural_time_limits(document_text, result)
         law_mismatch_issues = self.check_law_article_mismatch(document_text)
         result.calculation_issues.extend(law_mismatch_issues)
@@ -159,6 +162,8 @@ class RuleEngine:
             result.time_bar_issues,
             result.methodology_replacements,
             result.claim_comparisons,
+            judgment_basis_flags=h7_flags,
+            claim_response_flags=h8_flags,
         )
         result.dimensions = list(dimension_map.values())
 
@@ -1151,6 +1156,8 @@ class RuleEngine:
         time_bar_issues: list[TimeBarIssue] | None = None,
         methodology_replacements: list[MethodologyReplacement] | None = None,
         claim_comparisons: list[ClaimComparisonItem] | None = None,
+        judgment_basis_flags: list[RuleFlag] | None = None,
+        claim_response_flags: list[RuleFlag] | None = None,
     ) -> dict[str, HallucinationDimensionResult]:
         from .config import DIMENSION_TITLES
 
@@ -1293,6 +1300,12 @@ class RuleEngine:
                 evidence=f"{cc.item_name}: {cc.claim_amount}元→{cc.judgment_amount}元",
             ))
 
+        for jf in judgment_basis_flags or []:
+            dims["h7_judgment_basis_consistency"].rule_flags.append(jf)
+
+        for rf in claim_response_flags or []:
+            dims["h8_claim_response_consistency"].rule_flags.append(rf)
+
         return dims
 
     def _calculate_score(self, result: HallucinationDetectionResult) -> float:
@@ -1304,13 +1317,16 @@ class RuleEngine:
             "low": 1.0,
             "info": 0.5,
         }
+        # 与 config.DIMENSION_WEIGHTS 保持同比例（×5），v0.4.0 起八维再平衡
         dim_weight_map = {
-            "h1_sourceless_fabrication": 1.25,
-            "h2_law_misapplication": 1.0,
-            "h3_evidence_chain_break": 1.0,
-            "h4_subjective_rhetoric": 0.5,
-            "h5_claim_boundary_breach": 1.0,
-            "h6_nontext_evidence_fail": 0.25,
+            "h1_sourceless_fabrication": 1.10,
+            "h2_law_misapplication": 0.90,
+            "h3_evidence_chain_break": 0.90,
+            "h4_subjective_rhetoric": 0.40,
+            "h5_claim_boundary_breach": 0.75,
+            "h6_nontext_evidence_fail": 0.20,
+            "h7_judgment_basis_consistency": 0.375,
+            "h8_claim_response_consistency": 0.375,
         }
 
         rule_hit_counts: dict[str, int] = {}
@@ -1808,6 +1824,292 @@ class RuleEngine:
                 ))
 
         return comparisons
+
+    # ── H-7 裁判结果—援引依据一致性 ──────────────────────────────────
+
+    _JUDGMENT_ITEM_HEAD = re.compile(r'^[（(]?[一二三四五六七八九十\d]{1,4}[）)、.．:：]\s*')
+    _JUDGMENT_ITEM_DISPOSITION = re.compile(
+        r'支付|赔偿|给付|返还|退还|确认|驳回|撤销|变更|解除|继续履行|腾退|过户|协助|办理|承担|开具|交付'
+    )
+    _JUDGMENT_ITEM_NOUNS = [
+        "二倍工资差额", "二倍工资", "经济补偿金", "经济补偿", "加付赔偿金", "加班工资", "加班费",
+        "工资差额", "工资", "赔偿金", "补偿金", "违约金", "定金", "保证金", "抚养费", "赡养费",
+        "抚育费", "医疗费", "误工费", "护理费", "交通费", "鉴定费", "律师费", "利息", "差额",
+        "奖金", "提成", "借款", "货款", "租金", "房屋", "车辆", "股权", "劳动关系", "劳动合同",
+        "诉讼请求", "货", "款",
+    ]
+    _JUDGMENT_ITEM_BOILERPLATE = re.compile(
+        r'^如未按|迟延履行期间的债务|加倍支付|案件受理费|保全费|公告费|申请费|诉讼费用'
+    )
+    _LAW_CITATION_RE = re.compile(r'《[^》]+》第[一二三四五六七八九十百千零\d]+条')
+
+    def _reasoning_and_judgment_sections(self, document_text: str) -> tuple[str, str]:
+        """取说理段与主文段：优先 _extract_sections 的产出，空缺时回退四段式标题切分。"""
+        sections = extract_sections(document_text)
+        reasoning = sections.get("reasoning", "")
+        judgment_main = sections.get("judgment_main", "")
+        if not reasoning:
+            m = re.search(r'# 三、本院认为.*?(?=# 四|#|$)', document_text, re.DOTALL)
+            reasoning = m.group(0) if m else ""
+        if not judgment_main:
+            m = re.search(r'# 四、判决如下.*?(?=#|$)', document_text, re.DOTALL)
+            judgment_main = m.group(0) if m else ""
+        return reasoning, judgment_main
+
+    def _split_judgment_items(self, judgment_main: str) -> list[tuple[str, int]]:
+        """将判决主文拆分为逐项判项，返回 (判项文本, 主文内行号)。"""
+        items = []
+        for i, line in enumerate(judgment_main.split("\n")):
+            stripped = line.strip()
+            if not stripped or self._JUDGMENT_ITEM_BOILERPLATE.search(stripped):
+                continue
+            has_head = bool(self._JUDGMENT_ITEM_HEAD.match(stripped))
+            has_disposition = bool(self._JUDGMENT_ITEM_DISPOSITION.search(stripped))
+            if has_head and has_disposition and len(stripped) >= 8:
+                items.append((stripped, i + 1))
+            elif not has_head and has_disposition and len(stripped) >= 15 and stripped.endswith(("；", ";", "。")):
+                items.append((stripped, i + 1))
+        return items
+
+    def _item_nouns(self, item_text: str) -> list[str]:
+        """提取判项/诉请项中的义务对象名词（按出现位置去重）。"""
+        nouns = []
+        for noun in self._JUDGMENT_ITEM_NOUNS:
+            if noun in item_text and noun not in nouns:
+                nouns.append(noun)
+        return nouns
+
+    def _judgment_item_has_basis(self, item_text: str, reasoning: str) -> bool:
+        """启发式判断判项在说理段是否存在支撑。
+
+        支持条件（满足其一）：
+        1. 金额呼应：判项金额在说理段中出现；
+        2. 义务对象呼应：判项义务对象名词在说理段中出现；
+        3. 文本对齐：判项与说理段任一句子的字符 Jaccard 相似度 >= 0.30；
+        4. 依据引用：说理段含《法规名》第X条引用且判项义务动词在说理段出现。
+        """
+        amounts = {a.replace(',', '').replace('，', '') for a in self._AMOUNT_TEXT_RE.findall(item_text)}
+        if amounts:
+            reasoning_amounts = {
+                a.replace(',', '').replace('，', '')
+                for a in self._AMOUNT_TEXT_RE.findall(reasoning)
+            }
+            if amounts & reasoning_amounts:
+                return True
+
+        nouns = self._item_nouns(item_text)
+        for noun in nouns:
+            if noun in reasoning:
+                return True
+
+        sentences = [s.strip() for s in re.split(r'[。；]', reasoning) if len(s.strip()) >= 6]
+        best = 0.0
+        for sent in sentences:
+            score = self._compute_jaccard(item_text, sent)
+            if score > best:
+                best = score
+            if best >= 0.30:
+                return True
+
+        if self._LAW_CITATION_RE.search(reasoning) and self._JUDGMENT_ITEM_DISPOSITION.search(reasoning):
+            return True
+
+        return False
+
+    def check_judgment_basis_consistency(self, document_text: str) -> list[RuleFlag]:
+        """H-7 裁判结果—援引依据一致性：逐判项检查说理段是否存在支撑。
+
+        完全无呼应且无依据引用的判项 → RuleFlag(critical, H-7, "裁判结果缺乏依据支撑")。
+        """
+        flags = []
+        reasoning, judgment_main = self._reasoning_and_judgment_sections(document_text)
+        if not reasoning or not judgment_main:
+            return flags
+
+        for item_text, line_no in self._split_judgment_items(judgment_main):
+            if self._judgment_item_has_basis(item_text, reasoning):
+                continue
+            flags.append(RuleFlag(
+                rule_id="h7_unsupported_judgment_item",
+                h_code="H-7",
+                sub_type="裁判结果缺乏依据支撑",
+                severity="critical",
+                message="判决主文判项在说理部分缺乏依据支撑：判项关键词（金额/义务/确认对象）"
+                        "在说理段无呼应，说理段亦无相关法条引用，裁判结果与援引依据脱节",
+                evidence=item_text[:100],
+                location=f"主文行{line_no}",
+                line_number=line_no,
+            ))
+
+        logger.info("check_judgment_basis_consistency: found %d unsupported items", len(flags))
+        return flags
+
+    # ── H-8 诉请—判决回应一致性 ──────────────────────────────────────
+
+    _AMOUNT_TEXT_RE = re.compile(r'(\d+(?:[,，]\d{3})*(?:\.\d+)?)\s*元')
+    _CLAIM_ITEM_HEAD = re.compile(r'^[（(]?[一二三四五六七八九十\d]{1,4}[）)、.．:：]\s*')
+    _AMENDMENT_PATTERN = re.compile(r'(?:变更|增加|追加)(?:了)?(?:诉讼请求|上诉请求|仲裁请求|诉请)')
+    _AMENDMENT_AMOUNT = re.compile(r'(?:变更|增加|追加)[^\n]{0,40}?(\d+(?:[,，]\d{3})*(?:\.\d+)?)\s*元')
+    _CATCHALL_REJECT_RE = re.compile(r'驳回[^。；\n]{0,15}(?:其他|其余)[^。；\n]{0,8}(?:诉讼请求|诉请|请求)')
+    _NO_REASON_RELUCTANCE_RE = re.compile(r'不予理涉|不予处理')
+    _RESPONSE_REASON_RE = re.compile(r'理由|因|鉴于|依据|根据|于法无据|不符合|缺乏|不能成立')
+    _REJECT_RE = re.compile(r'驳回|不予支持|不予受理')
+    _ANOTHER_CASE_RE = re.compile(r'另案|另行主张|另行起诉')
+    _AMEND_PROCESSED_RE = re.compile(
+        r'变更后|变更[^。；\n]{0,8}(?:诉讼请求|诉请|请求)|准许[^。；\n]{0,8}变更'
+        r'|同意[^。；\n]{0,8}变更|按[^。；\n]{0,6}变更后|(?:准许|同意|予以)(?:原告)?(?:增加|变更|追加)'
+    )
+
+    def _extract_claim_items(self, complaint_text: str, document_text: str) -> list[tuple[str, float]]:
+        """汇总逐项诉请：优先 claim_parser.claim_limits，为空时回退诉称段逐项解析。"""
+        claims: list[tuple[str, float]] = []
+        seen: set[str] = set()
+
+        for name, amount in self.claim_parser.claim_limits.items():
+            key = re.sub(r'\s', '', name)
+            if key and key not in seen:
+                seen.add(key)
+                claims.append((name, amount))
+
+        if not claims:
+            sections = extract_sections(document_text)
+            claim_section = sections.get("plaintiff_claim", "")
+            if not claim_section and complaint_text:
+                claim_section = complaint_text
+            for line in claim_section.split("\n"):
+                stripped = line.strip()
+                if not self._CLAIM_ITEM_HEAD.match(stripped):
+                    continue
+                if len(stripped) < 6:
+                    continue
+                name = self._CLAIM_ITEM_HEAD.sub('', stripped).strip('；;。，, ')
+                key = re.sub(r'\s', '', name)
+                if key and key not in seen:
+                    seen.add(key)
+                    amounts = self._AMOUNT_TEXT_RE.findall(stripped)
+                    amount = 0.0
+                    if amounts:
+                        try:
+                            amount = float(amounts[0].replace(',', '').replace('，', ''))
+                        except ValueError:
+                            amount = 0.0
+                    claims.append((name, amount))
+
+        return claims
+
+    def _claim_response_status(
+        self,
+        claim_name: str,
+        claim_amount: float,
+        judgment_main: str,
+        reasoning: str,
+    ) -> str:
+        """判定单项诉请在主文/说理中的处置状态。
+
+        返回：支持 / 驳回 / 另案 / 未回应（含无理由不予理涉）。
+        """
+        combined = f"{judgment_main}\n{reasoning}"
+        judgment_items = self._split_judgment_items(judgment_main)
+        jname_map = {re.sub(r'\s', '', t): 0.0 for t, _ in judgment_items}
+
+        best, score = self._match_claim_item(claim_name, jname_map)
+        if best and score >= 0.4:
+            return "支持"
+
+        if claim_amount > 0:
+            amt = f"{claim_amount:g}"
+            judgment_amounts = {
+                a.replace(',', '').replace('，', '') for a in self._AMOUNT_TEXT_RE.findall(judgment_main)
+            }
+            if amt in judgment_amounts:
+                return "支持"
+
+        nouns = self._item_nouns(claim_name)
+        if nouns and any(n in judgment_main for n in nouns):
+            return "支持"
+
+        if self._CATCHALL_REJECT_RE.search(combined):
+            return "驳回"
+
+        for sent in re.split(r'[。；\n]', combined):
+            if not any(n in sent for n in nouns):
+                continue
+            if self._REJECT_RE.search(sent):
+                return "驳回"
+            if self._NO_REASON_RELUCTANCE_RE.search(sent):
+                if self._RESPONSE_REASON_RE.search(sent):
+                    return "驳回"
+                return "未回应（无理由不予理涉）"
+            if self._ANOTHER_CASE_RE.search(sent):
+                return "另案"
+
+        return "未回应"
+
+    def check_claim_response_consistency(
+        self,
+        document_text: str,
+        complaint_text: str = "",
+    ) -> list[RuleFlag]:
+        """H-8 诉请—判决回应一致性：逐项诉请与主文处置对齐。
+
+        - "未回应"（含无理由不予理涉）→ RuleFlag(high, H-8, "诉讼请求未获回应")；
+        - 检测到"变更/增加诉请"表述但主文与说理均未处理 →
+          RuleFlag(critical, H-8, "变更后诉讼请求未审理")。
+        """
+        flags = []
+        reasoning, judgment_main = self._reasoning_and_judgment_sections(document_text)
+        if not judgment_main:
+            return flags
+
+        claims = self._extract_claim_items(complaint_text, document_text)
+        for name, amount in claims:
+            status = self._claim_response_status(name, amount, judgment_main, reasoning)
+            if status in ("支持", "驳回", "另案"):
+                continue
+            amount_text = f"{amount:,.2f}元" if amount > 0 else "（未主张具体金额）"
+            flags.append(RuleFlag(
+                rule_id="h8_claim_not_addressed",
+                h_code="H-8",
+                sub_type="诉讼请求未获回应",
+                severity="high",
+                message=f"诉讼请求未获回应：诉请'{name}'（{amount_text}）在判决主文中"
+                        f"未见支持、部分支持、驳回或另案处理等任何处置（{status}），"
+                        f"违反诉审一致原则中的逐项回应义务",
+                evidence=f"诉请：{name} {amount_text}"[:100],
+            ))
+
+        if self._AMENDMENT_PATTERN.search(document_text):
+            amend_amount_m = self._AMENDMENT_AMOUNT.search(document_text)
+            amend_amount = amend_amount_m.group(1).replace(',', '').replace('，', '') if amend_amount_m else ""
+            processed = bool(self._AMEND_PROCESSED_RE.search(f"{judgment_main}\n{reasoning}"))
+            if not processed and amend_amount:
+                judgment_amounts = {
+                    a.replace(',', '').replace('，', '') for a in self._AMOUNT_TEXT_RE.findall(judgment_main)
+                }
+                if amend_amount in judgment_amounts:
+                    processed = True
+            if not processed:
+                loc_line = 0
+                for i, line in enumerate(document_text.split("\n")):
+                    if self._AMENDMENT_PATTERN.search(line):
+                        loc_line = i + 1
+                        break
+                flags.append(RuleFlag(
+                    rule_id="h8_amended_claim_untried",
+                    h_code="H-8",
+                    sub_type="变更后诉讼请求未审理",
+                    severity="critical",
+                    message="文书存在变更/增加诉讼请求的表述，但判决主文与说理部分均未对变更后的"
+                            "诉讼请求作出审理与回应（未准许/未驳回/未按变更后请求裁判），"
+                            "属于遗漏审理",
+                    evidence=f"变更诉请表述：{self._AMENDMENT_PATTERN.search(document_text).group(0)}"
+                             + (f"，变更后金额{amend_amount}元" if amend_amount else ""),
+                    location=f"行{loc_line}" if loc_line else "",
+                    line_number=loc_line,
+                ))
+
+        logger.info("check_claim_response_consistency: found %d response issues", len(flags))
+        return flags
 
     def _check_procedural_time_limits(
         self,

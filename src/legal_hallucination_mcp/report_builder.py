@@ -80,7 +80,7 @@ class ReportBuilder:
         lines.append(f"> **检测文件**：`{result.document_path or '未指定'}`")
         lines.append(f"> **证据索引**：`{result.manifest_path or '未加载'}`")
         lines.append(f"> **检测日期**：{result.detection_time}")
-        lines.append("> **检测方法**：六维分类体系（H-1至H-6）+ 诉求边界分析 + 法律适用核验 + 封闭宇宙规则 + 策略透镜 + 交叉验证 + 法律知识库")
+        lines.append("> **检测方法**：八维分类体系（H-1至H-8）+ 诉求边界分析 + 法律适用核验 + 封闭宇宙规则 + 策略透镜 + 交叉验证 + 法律知识库")
         lines.append(f"> **AI Agent**：{result.agent_name}")
         if result.llm_name:
             lines.append(f"> **LLM**：{result.llm_name}")
@@ -101,6 +101,8 @@ class ReportBuilder:
         self._build_h4_section(lines, result)
         self._build_h5_section(lines, result)
         self._build_h6_section(lines, result)
+        self._build_h7_section(lines, result)
+        self._build_h8_section(lines, result)
         self._build_nontext_evidence_table(lines, result)
         self._build_summary_stats(lines, result)
         self._build_version_comparison(lines, result, previous_versions or [])
@@ -112,7 +114,7 @@ class ReportBuilder:
         lines.append("")
         lines.append(f"*本报告由法律文书幻觉检测系统 v2.0 自动生成，检测时间：{result.detection_time}*")
         lines.append("*报告遵循封闭宇宙规则与诉审一致原则，所有检测项均可追溯至证据索引清单。*")
-        lines.append("*基于六维分类体系（H-1至H-6）+ 诉求边界分析 + 法律适用核验 + 策略透镜 + 交叉验证 + 法律知识库*")
+        lines.append("*基于八维分类体系（H-1至H-8）+ 诉求边界分析 + 法律适用核验 + 策略透镜 + 交叉验证 + 法律知识库*")
 
         report = "\n".join(lines)
         logger.info("build_report: report length=%d", len(report))
@@ -224,6 +226,10 @@ class ReportBuilder:
         lines.append(f"| 利息基数提取 | {len(result.interest_base_items)} | 以XX元为基数的利息计算 |")
         lines.append(f"| 计算核验问题 | {len(result.calculation_issues)} | 加班工资/二倍工资/金额汇总等计算错误 |")
         lines.append(f"| 诉请对比项 | {len(result.claim_comparisons)} | 判决金额与诉请金额逐项对比 |")
+        h7_count = sum(len(d.rule_flags) for d in result.dimensions if d.h_code == "H-7")
+        h8_count = sum(len(d.rule_flags) for d in result.dimensions if d.h_code == "H-8")
+        lines.append(f"| 判项缺乏依据支撑（H-7） | {h7_count} | 判决主文判项在说理部分无呼应/无法条引用 |")
+        lines.append(f"| 诉请未获回应（H-8） | {h8_count} | 诉请未获处置或变更诉请未审理 |")
         lines.append("")
 
         lines.append("### 检测方法说明")
@@ -1153,8 +1159,89 @@ class ReportBuilder:
             lines.append("✅ 非文本证据引用均已标注来源形式，或未引用非文本证据。")
             lines.append("")
 
+    def _build_h7_section(self, lines: list, result: HallucinationDetectionResult):
+        lines.append("## 十三、H-7：裁判结果—援引依据一致性检测")
+        lines.append("")
+        lines.append("逐项检查判决主文判项：每一判项的关键词（金额/义务动词/确认对象）"
+                      "应在说理部分存在呼应，或说理部分含相关《法规名》第X条引用。"
+                      "完全无呼应且无依据引用的判项，意味着裁判结果与援引依据脱节，"
+                      "属于裁判结论缺乏论证支撑的硬性幻觉。")
+        lines.append("")
+
+        h7_flags = []
+        for dim in result.dimensions:
+            if dim.h_code == "H-7":
+                h7_flags = dim.rule_flags
+                break
+
+        if h7_flags:
+            idx = 0
+            for flag in h7_flags:
+                idx += 1
+                analysis = (f"判决主文判项\u201c{flag.evidence[:60]}\u201d在说理部分缺乏依据支撑："
+                            f"判项的金额、义务动词与确认对象均未在说理段中出现呼应，"
+                            f"说理段亦无可关联的法条引用。"
+                            f"该判项的裁判结果缺乏论证链条，存在凭空裁判风险。")
+                self._write_card(
+                    lines, idx, "H7", flag.sub_type,
+                    flag.severity, analysis,
+                    location=flag.location,
+                    original_text=flag.evidence[:100] if flag.evidence else "",
+                    suggestion="在说理部分补充该判项的论证：明确认定对应事实并引用具体法条"
+                               "（《法规名》第X条），使\u201c事实→法律→结论\u201d三段论覆盖每一判项；"
+                               "若无充分论证基础，应删除或修改该判项。",
+                )
+        else:
+            lines.append("✅ 每一判项在说理部分均存在依据支撑（关键词呼应或法条引用）。")
+            lines.append("")
+
+    def _build_h8_section(self, lines: list, result: HallucinationDetectionResult):
+        lines.append("## 十四、H-8：诉请—判决回应一致性检测")
+        lines.append("")
+        lines.append("逐项检查诉讼请求：每一项诉请在判决主文中应获得明确处置"
+                      "（支持/部分支持/驳回/另案处理）。"
+                      "\u201c未回应\u201d（含无理由不予理涉）与\u201c变更/增加诉请未审理\u201d"
+                      "均属于遗漏裁判事项，违反诉审一致原则中的逐项回应义务。")
+        lines.append("")
+
+        h8_flags = []
+        for dim in result.dimensions:
+            if dim.h_code == "H-8":
+                h8_flags = dim.rule_flags
+                break
+
+        if h8_flags:
+            idx = 0
+            for flag in h8_flags:
+                idx += 1
+                if flag.sub_type == "变更后诉讼请求未审理":
+                    analysis = ("文书存在变更/增加诉讼请求的表述，但判决主文与说理部分均未对"
+                                "变更后的诉讼请求作出审理与回应：既未准许亦未驳回，"
+                                "也未按变更后请求裁判，属于遗漏审理诉讼请求。")
+                    suggestion = ("在说理部分对变更后的诉讼请求逐项作出回应："
+                                  "或准许并纳入裁判主文，或说明不予准许的理由；"
+                                  "若原诉请已撤回或放弃，应在文书中明确记载其处理结果。")
+                else:
+                    analysis = (f"诉讼请求\u201c{flag.evidence[:60]}\u201d在判决主文中未获任何处置："
+                                f"既无支持或部分支持的判项，也无驳回该诉请的说理，"
+                                f"亦未注明另案处理。该诉请处于\u201c悬空\u201d状态。")
+                    suggestion = ("在判决主文或说理部分对每一项诉请逐项回应："
+                                  "支持的在主文中体现判项，不支持的使用"
+                                  "\u201c驳回其他诉讼请求\u201d等兜底表述并说明理由；"
+                                  "拟另案处理的应明确注明。")
+                self._write_card(
+                    lines, idx, "H8", flag.sub_type,
+                    flag.severity, analysis,
+                    location=flag.location,
+                    original_text=flag.evidence[:100] if flag.evidence else "",
+                    suggestion=suggestion,
+                )
+        else:
+            lines.append("✅ 各项诉讼请求在判决主文中均获得明确处置，或无可提取的逐项诉请。")
+            lines.append("")
+
     def _build_nontext_evidence_table(self, lines: list, result: HallucinationDetectionResult):
-        lines.append("## 十三、非文本证据穿透验证表")
+        lines.append("## 十五、非文本证据穿透验证表")
         lines.append("")
         lines.append("以下列出文书中引用的非文本证据及其验证状态，"
                       "供人工确认其真实性。本表不做\u201c可能为幻觉\u201d的预设判断，"
@@ -1186,7 +1273,7 @@ class ReportBuilder:
             lines.append("")
 
     def _build_summary_stats(self, lines: list, result: HallucinationDetectionResult):
-        lines.append("## 十四、汇总统计")
+        lines.append("## 十六、汇总统计")
         lines.append("")
 
         confirmed = 0
@@ -1307,7 +1394,7 @@ class ReportBuilder:
         result: HallucinationDetectionResult,
         previous_versions: list[dict],
     ):
-        lines.append("## 十五、与既往版本改进对照")
+        lines.append("## 十七、与既往版本改进对照")
         lines.append("")
 
         if not previous_versions:
@@ -1389,7 +1476,7 @@ class ReportBuilder:
         return "；".join(improvements) if improvements else "待改进"
 
     def _build_suggestions(self, lines: list, result: HallucinationDetectionResult):
-        lines.append("## 十六、综合修正建议")
+        lines.append("## 十八、综合修正建议")
         lines.append("")
 
         suggestions = []
@@ -1481,7 +1568,7 @@ class ReportBuilder:
             lines.append("")
 
     def _build_priority_fixes(self, lines: list, result: HallucinationDetectionResult):
-        lines.append("## 十七、紧急修复优先级")
+        lines.append("## 十九、紧急修复优先级")
         lines.append("")
         lines.append("发现幻觉时的修复优先级排序（参照操作手册第十二章）：")
         lines.append("")
@@ -1530,7 +1617,7 @@ class ReportBuilder:
             lines.append("")
 
     def _build_checklist(self, lines: list, result: HallucinationDetectionResult):
-        lines.append("## 十八、文书生成后自检清单")
+        lines.append("## 二十、文书生成后自检清单")
         lines.append("")
         lines.append("以下清单供人工审核和AI Agent进一步改进时参考（参照操作手册第七章）：")
         lines.append("")

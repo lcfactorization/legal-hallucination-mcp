@@ -37,6 +37,7 @@ from .law_knowledge_base import LawKnowledgeBase
 from .report_builder import ReportBuilder, generate_report_filename
 from .response_parser import ResponseParser
 from .rule_engine import RuleEngine
+from .section_extractor import extract_sections
 from .skill_runner import SkillLoader, TemplateRenderer, build_system_prompt
 from .vector_index import VectorIndex
 from .web_verifier import WebVerifier
@@ -100,60 +101,8 @@ def _build_fallback_prompt(dimension: str) -> str:
 
 
 def _extract_sections(document_text: str) -> dict:
-    sections = {}
-
-    plaintiff = re.search(
-        r"(?:原告|公诉机关|申请人|上诉人).{0,10}(?:诉称|指控|称)[：:]\s*(.*?)(?=\n\n|被告.{0,10}辩称|被上诉人)",
-        document_text, re.DOTALL,
-    )
-    sections["plaintiff_claim"] = plaintiff.group(1).strip() if plaintiff else ""
-
-    defendant = re.search(
-        r"(?:被告|被申请人|被上诉人).{0,10}辩称[：:]\s*(.*?)(?=\n\n|本院查明|经审理)",
-        document_text, re.DOTALL,
-    )
-    sections["defendant_defense"] = defendant.group(1).strip() if defendant else ""
-
-    court_finding = re.search(
-        r"(?:本院查明|经审理查明|经审理认定)[：:]\s*(.*?)(?=\n\n|上述事实|证据如下|本院认为)",
-        document_text, re.DOTALL,
-    )
-    sections["court_finding"] = court_finding.group(1).strip() if court_finding else ""
-
-    evidence = re.search(
-        r"(?:上述事实|证据如下|有下列证据)[，：:]\s*(.*?)(?=\n\n|本院认为|判决如下)",
-        document_text, re.DOTALL,
-    )
-    sections["evidence_analysis"] = evidence.group(1).strip() if evidence else ""
-
-    reasoning = re.search(
-        r"(?:# 三、本院认为|本院认为)[，：:]\s*(.*?)(?=依照|# 四|判决如下|裁定如下)",
-        document_text, re.DOTALL,
-    )
-    sections["reasoning"] = reasoning.group(1).strip() if reasoning else ""
-
-    judgment_main = re.search(
-        r"(?:# 四、判决如下|判决如下)[：:]\s*(.*)",
-        document_text, re.DOTALL,
-    )
-    sections["judgment_main"] = judgment_main.group(1).strip() if judgment_main else ""
-
-    case_info = {}
-    case_num = re.search(r"[(（]([\d年]+[^)）]+)[)）]", document_text[:500])
-    if case_num:
-        case_info["case_number"] = case_num.group(1)
-    court_match = re.search(r"([\u4e00-\u9fff]+人民法院|[\u4e00-\u9fff]+仲裁委员会)", document_text[:500])
-    if court_match:
-        case_info["court"] = court_match.group(1)
-    sections["case_info"] = case_info
-
-    filled = sum(
-        1 for v in sections.values()
-        if v and (isinstance(v, str) and len(v) > 10 or isinstance(v, dict) and v)
-    )
-    sections["extraction_confidence"] = round(filled / 6, 2) if filled else 0.0
-
-    return sections
+    """从裁判文书全文提取核心段落（v0.4.0 起委托给共享模块 section_extractor）。"""
+    return extract_sections(document_text)
 
 
 # ── MCP Resources ──────────────────────────────────────────────
@@ -232,23 +181,23 @@ def load_evidence_manifest(
     vault_root: 工作区根目录（用于解析相对路径）
     """
     try:
-        logger.info(
+        logger.debug(
             "[LOCK] load_evidence_manifest: acquiring _state_lock, "
             "manifest_path=%s, vault_root=%s, thread=%s",
             manifest_path, vault_root, threading.current_thread().name,
         )
         with _state_lock:
-            logger.info(
+            logger.debug(
                 "[LOCK] load_evidence_manifest: lock acquired, thread=%s",
                 threading.current_thread().name,
             )
             result = _evidence_index.load(manifest_path, vault_root)
             _rule_engine.evidence_index = _evidence_index
-            logger.info(
+            logger.debug(
                 "[LOCK] load_evidence_manifest: state updated, loaded=%d, thread=%s",
                 result.get("loaded", 0), threading.current_thread().name,
             )
-        logger.info(
+        logger.debug(
             "[LOCK] load_evidence_manifest: lock released, thread=%s",
             threading.current_thread().name,
         )
@@ -378,22 +327,22 @@ def check_law_citations(
     """
     try:
         if local_law_dir:
-            logger.info(
+            logger.debug(
                 "[LOCK] check_law_citations: acquiring _state_lock for law_checker.load, "
                 "dir=%s, thread=%s",
                 local_law_dir, threading.current_thread().name,
             )
             with _state_lock:
-                logger.info(
+                logger.debug(
                     "[LOCK] check_law_citations: lock acquired, thread=%s",
                     threading.current_thread().name,
                 )
                 _law_checker.load_local_laws(local_law_dir)
-                logger.info(
+                logger.debug(
                     "[LOCK] check_law_citations: law_checker loaded, thread=%s",
                     threading.current_thread().name,
                 )
-            logger.info(
+            logger.debug(
                 "[LOCK] check_law_citations: lock released, thread=%s",
                 threading.current_thread().name,
             )
@@ -418,7 +367,7 @@ def run_rule_engine_full(
     vault_root: str = "",
     local_law_dir: str = "",
 ) -> str:
-    """规则引擎全量扫描——六维幻觉检测（纯规则，零LLM，即时返回）。
+    """规则引擎全量扫描——八维幻觉检测（纯规则，零LLM，即时返回）。
 
     document_text: 裁判文书全文
     manifest_path: evidence_manifest.md 路径（可选，用于引注欺诈检测）
@@ -437,6 +386,10 @@ def run_rule_engine_full(
             local_law_dir=local_law_dir,
         )
         result.report_markdown = _builder.build_report(result)
+        h7_h8_flags = []
+        for d in result.dimensions:
+            if d.h_code in ("H-7", "H-8"):
+                h7_h8_flags.extend(f.model_dump() for f in d.rule_flags)
         return json.dumps({
             "success": True,
             "total_flags": result.total_flags,
@@ -456,6 +409,7 @@ def run_rule_engine_full(
                 }
                 for d in result.dimensions
             ],
+            "h7_h8_flags": h7_h8_flags,
             "structure_issues": len(result.structure_issues),
             "citation_frauds": len(result.citation_frauds),
             "claim_violations": len(result.claim_violations),
@@ -1165,7 +1119,7 @@ def batch_detect(
             return make_error(ErrorCode.INVALID_INPUT, "documents_json必须是JSON数组")
 
         if manifest_path:
-            logger.info(
+            logger.debug(
                 "[LOCK] batch_detect: acquiring _state_lock for evidence_index.load, "
                 "thread=%s",
                 threading.current_thread().name,
@@ -1173,13 +1127,13 @@ def batch_detect(
             with _state_lock:
                 _evidence_index.load(manifest_path, vault_root)
                 _rule_engine.evidence_index = _evidence_index
-                logger.info(
+                logger.debug(
                     "[LOCK] batch_detect: evidence_index loaded, thread=%s",
                     threading.current_thread().name,
                 )
 
         if local_law_dir:
-            logger.info(
+            logger.debug(
                 "[LOCK] batch_detect: acquiring _state_lock for law state update, "
                 "thread=%s",
                 threading.current_thread().name,
@@ -1189,7 +1143,7 @@ def batch_detect(
                 _law_kb.load_from_directory(local_law_dir)
                 _rule_engine.law_checker = _law_checker
                 _rule_engine.law_kb = _law_kb
-                logger.info(
+                logger.debug(
                     "[LOCK] batch_detect: law state updated, thread=%s",
                     threading.current_thread().name,
                 )
@@ -1291,7 +1245,7 @@ def compare_documents(
     """
     try:
         if manifest_path:
-            logger.info(
+            logger.debug(
                 "[LOCK] compare_documents: acquiring _state_lock for evidence_index.load, "
                 "thread=%s",
                 threading.current_thread().name,
@@ -1299,13 +1253,13 @@ def compare_documents(
             with _state_lock:
                 _evidence_index.load(manifest_path, vault_root)
                 _rule_engine.evidence_index = _evidence_index
-                logger.info(
+                logger.debug(
                     "[LOCK] compare_documents: evidence_index loaded, thread=%s",
                     threading.current_thread().name,
                 )
 
         if local_law_dir:
-            logger.info(
+            logger.debug(
                 "[LOCK] compare_documents: acquiring _state_lock for law state update, "
                 "thread=%s",
                 threading.current_thread().name,
@@ -1313,7 +1267,7 @@ def compare_documents(
             with _state_lock:
                 _law_checker.load_local_laws(local_law_dir)
                 _law_kb.load_from_directory(local_law_dir)
-                logger.info(
+                logger.debug(
                     "[LOCK] compare_documents: law state updated, thread=%s",
                     threading.current_thread().name,
                 )
@@ -1542,24 +1496,24 @@ def build_vector_index(
     """
     try:
         if law_dir and os.path.exists(law_dir):
-            logger.info(
+            logger.debug(
                 "[LOCK] build_vector_index: acquiring _state_lock for law_kb.load, "
                 "thread=%s",
                 threading.current_thread().name,
             )
             with _state_lock:
-                logger.info(
+                logger.debug(
                     "[LOCK] build_vector_index: lock acquired, thread=%s",
                     threading.current_thread().name,
                 )
                 if not _law_kb.loaded:
                     _law_kb.load_from_directory(law_dir)
-                logger.info(
+                logger.debug(
                     "[LOCK] build_vector_index: law_kb state checked, loaded=%s, "
                     "thread=%s",
                     _law_kb.loaded, threading.current_thread().name,
                 )
-            logger.info(
+            logger.debug(
                 "[LOCK] build_vector_index: lock released, thread=%s",
                 threading.current_thread().name,
             )

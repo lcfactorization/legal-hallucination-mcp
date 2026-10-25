@@ -25,6 +25,8 @@ HALLUCINATION_DIMENSIONS = [
     "h4_subjective_rhetoric",
     "h5_claim_boundary_breach",
     "h6_nontext_evidence_fail",
+    "h7_judgment_basis_consistency",
+    "h8_claim_response_consistency",
 ]
 
 DIMENSION_TITLES = {
@@ -34,6 +36,8 @@ DIMENSION_TITLES = {
     "h4_subjective_rhetoric": "H-4 主观臆断/修辞过度",
     "h5_claim_boundary_breach": "H-5 诉求边界突破",
     "h6_nontext_evidence_fail": "H-6 非文本证据穿透失败",
+    "h7_judgment_basis_consistency": "H-7 裁判结果—援引依据一致性",
+    "h8_claim_response_consistency": "H-8 诉请—判决回应一致性",
 }
 
 DIMENSION_ORDER = {
@@ -43,15 +47,19 @@ DIMENSION_ORDER = {
     "h4_subjective_rhetoric": 4,
     "h5_claim_boundary_breach": 5,
     "h6_nontext_evidence_fail": 6,
+    "h7_judgment_basis_consistency": 7,
+    "h8_claim_response_consistency": 8,
 }
 
 DIMENSION_WEIGHTS = {
-    "h1_sourceless_fabrication": 0.25,
-    "h2_law_misapplication": 0.20,
-    "h3_evidence_chain_break": 0.20,
-    "h4_subjective_rhetoric": 0.10,
-    "h5_claim_boundary_breach": 0.20,
-    "h6_nontext_evidence_fail": 0.05,
+    "h1_sourceless_fabrication": 0.22,
+    "h2_law_misapplication": 0.18,
+    "h3_evidence_chain_break": 0.18,
+    "h4_subjective_rhetoric": 0.08,
+    "h5_claim_boundary_breach": 0.15,
+    "h6_nontext_evidence_fail": 0.04,
+    "h7_judgment_basis_consistency": 0.075,
+    "h8_claim_response_consistency": 0.075,
 }
 
 HALLUCINATION_SEVERITY = {
