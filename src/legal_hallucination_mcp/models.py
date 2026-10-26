@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class RuleFlag(BaseModel):
     rule_id: str = Field(default="", description="规则标识")
-    h_code: str = Field(default="", description="幻觉维度编号 H-1~H-6")
+    h_code: str = Field(default="", description="幻觉维度编号 H-1~H-8")
     sub_type: str = Field(default="", description="子类型")
     severity: str = Field(default="medium", description="严重度: critical/high/medium/low/info")
     message: str = Field(default="", description="检测消息")
@@ -76,7 +76,7 @@ class FactSourceIssue(BaseModel):
 class HallucinationDimensionResult(BaseModel):
     dimension: str = Field(default="", description="维度标识")
     dimension_title: str = Field(default="", description="维度中文名")
-    h_code: str = Field(default="", description="H-1~H-6")
+    h_code: str = Field(default="", description="H-1~H-8")
     rule_flags: list[RuleFlag] = Field(default_factory=list)
     semantic_flags: list[dict] = Field(default_factory=list)
     total_flags: int = Field(default=0)

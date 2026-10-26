@@ -8,7 +8,7 @@ from legal_hallucination_mcp.report_builder import ReportBuilder
 from _paths import get_vault_root, get_manifest_path, get_output_dir
 
 vault_root = get_vault_root()
-doc_path = os.path.join(vault_root, "V42_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")
+doc_path = os.path.join(vault_root, "V42_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")
 manifest_path = get_manifest_path()
 output_dir = get_output_dir()
 

@@ -38,17 +38,17 @@ LOCAL_LAW_DIR = os.path.join(PROJECT_ROOT, "vault_mirror", "案件", "法律法�
 OUTPUT_DIR = os.path.join(Path(__file__).resolve().parent, "output")
 
 DOCUMENTS: list[dict[str, str]] = [
-    {"label": "V43", "path": os.path.join(VAULT_ROOT, "V43_模拟二审判决书_苏06民终6271号劳动争议_20260528.md")},
-    {"label": "V42", "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V41", "path": os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V40P1", "path": os.path.join(VAULT_ROOT, "V40P1_模拟二审判决书_苏06民终6271号劳动争议_20260527.md")},
-    {"label": "V40", "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终6271号劳动争议_20260525.md")},
-    {"label": "V39", "path": os.path.join(VAULT_ROOT, "V39_模拟二审判决书_苏06民终6271号劳动争议_20260525.md")},
-    {"label": "V38", "path": os.path.join(VAULT_ROOT, "V38_模拟二审判决书_苏06民终6271号劳动争议_20260524.md")},
-    {"label": "V33", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终6271号劳动争议_V33_20260520.md")},
-    {"label": "V32", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终6271号劳动争议_V32_20260520.md")},
-    {"label": "V31", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终6271号劳动争议_V31_20260520.md")},
-    {"label": "V30", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终6271号劳动争议_V30_20260520.md")},
+    {"label": "V43", "path": os.path.join(VAULT_ROOT, "V43_模拟二审判决书_苏06民终9101号劳动争议_20260528.md")},
+    {"label": "V42", "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V41", "path": os.path.join(VAULT_ROOT, "V41_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V40P1", "path": os.path.join(VAULT_ROOT, "V40P1_模拟二审判决书_苏06民终9101号劳动争议_20260527.md")},
+    {"label": "V40", "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终9101号劳动争议_20260525.md")},
+    {"label": "V39", "path": os.path.join(VAULT_ROOT, "V39_模拟二审判决书_苏06民终9101号劳动争议_20260525.md")},
+    {"label": "V38", "path": os.path.join(VAULT_ROOT, "V38_模拟二审判决书_苏06民终9101号劳动争议_20260524.md")},
+    {"label": "V33", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终9101号劳动争议_V33_20260520.md")},
+    {"label": "V32", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终9101号劳动争议_V32_20260520.md")},
+    {"label": "V31", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终9101号劳动争议_V31_20260520.md")},
+    {"label": "V30", "path": os.path.join(VAULT_ROOT, "Antigravity+LLM#+终极版_模拟二审判决书_苏06民终9101号劳动争议_V30_20260520.md")},
 ]
 
 

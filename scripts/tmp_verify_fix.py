@@ -4,7 +4,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-VAULT_ROOT = r"C:\Users\stere\Documents\Obsidian Vault"
+from _paths import PLACEHOLDER_VAULT
+
+VAULT_ROOT = os.environ.get("VAULT_ROOT", PLACEHOLDER_VAULT)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAW_DIR = os.path.join(_PROJECT_ROOT, "vault_mirror", "案件", "法律法规")
 print(f"LAW_DIR={LAW_DIR}")

@@ -17,7 +17,7 @@
 - [项目简介](#项目简介)
 - [快速开始](#快速开始)
 - [安装指南](#安装指南)
-- [六维幻觉检测体系](#六维幻觉检测体系)
+- [八维幻觉检测体系](#八维幻觉检测体系)
 - [架构说明](#架构说明)
 - [配置 MCP 客户端](#配置-mcp-客户端)
 - [使用示例](#使用示例)
@@ -96,6 +96,7 @@ python scripts/verify_agent.py \
 |:---|:---|
 | `uv` | 更快的 Python 包管理器（替代 pip） |
 | `make` | 便捷构建命令（非必需） |
+| `python-docx` | 法规库加载 `.docx` 法规文件（可选，未安装时自动跳过 `.docx` 并提示） |
 
 ### 步骤一：获取源码
 
@@ -133,6 +134,14 @@ pip install -e .
 ```bash
 pip install -e ".[dev]"
 ```
+
+**可选：启用 .docx 法规库加载（python-docx）：**
+
+```bash
+pip install -e ".[docx]"
+```
+
+不安装 `python-docx` 时，`load_from_directory()` 会跳过 `.docx` 文件并汇总 warning 提示，其余功能不受影响。
 
 **使用 uv（更快）：**
 
@@ -213,16 +222,20 @@ export PYTHONPATH="$PYTHONPATH:$(pwd)/src"
 
 ---
 
-## 六维幻觉检测体系
+## 八维幻觉检测体系
 
-| 维度 | 代码 | 检测内容 | 风险等级 |
-|:---|:---|:---|:---|
-| 无源编造事实 | H-1 | 引注欺诈、内部版本引用、法条虚构、事实来源未绑定证据、类案杜撰 | 最高 |
-| 法律适用错误 | H-2 | 已废止法律、引用格式不规范、法律方法论替换、程序日期杜撰 | 高 |
-| 证据链断裂 | H-3 | 三段论缺失大前提/小前提、文书结构缺失 | 高 |
-| 主观臆断/修辞过度 | H-4 | 道德评价、意图推断、情感化修辞 | 中 |
-| 诉求边界突破 | H-5 | 判决金额超出诉请上限、项目越权、计算错误、利息基数错误 | 高 |
-| 非文本证据穿透失败 | H-6 | 录音/录像/鉴定意见等未标注来源形式 | 低 |
+| 维度 | 代码 | 权重 | 检测内容 | 风险等级 |
+|:---|:---|:---:|:---|:---|
+| 无源编造事实 | H-1 | 0.22 | 引注欺诈、内部版本引用、法条虚构、事实来源未绑定证据、类案杜撰 | 最高 |
+| 法律适用错误 | H-2 | 0.18 | 已废止法律、引用格式不规范、法律方法论替换、程序日期杜撰 | 高 |
+| 证据链断裂 | H-3 | 0.18 | 三段论缺失大前提/小前提、文书结构缺失 | 高 |
+| 主观臆断/修辞过度 | H-4 | 0.08 | 道德评价、意图推断、情感化修辞 | 中 |
+| 诉求边界突破 | H-5 | 0.15 | 判决金额超出诉请上限、项目越权、计算错误、利息基数错误 | 高 |
+| 非文本证据穿透失败 | H-6 | 0.04 | 录音/录像/鉴定意见等未标注来源形式 | 低 |
+| 裁判结果—援引依据一致性 | H-7 | 0.075 | 判决主文判项在说理部分无关键词呼应、亦无相关法条引用（v0.4.0新增） | 致命 |
+| 诉请—判决回应一致性 | H-8 | 0.075 | 诉讼请求未获主文处置（支持/部分/驳回/另案）、变更或增加诉请未审理（v0.4.0新增） | 高 |
+
+权重之和为 1.00（v0.4.0 再平衡，详见 CHANGELOG V44）。H-7 / H-8 由规则引擎内置启发式检查实现（`rule_engine.check_judgment_basis_consistency()` / `check_claim_response_consistency()`），无需 LLM 参与。
 
 每个维度对应的技能模板位于 `src/legal_hallucination_mcp/skills/dimensions/` 目录：
 
@@ -234,6 +247,8 @@ h4_subjective_rhetoric.md      # 主观修辞
 h5_claim_boundary_breach.md    # 诉求边界突破
 h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 ```
+
+（H-7 / H-8 为 v0.4.0 新增的规则引擎内置维度，暂无独立技能模板文件，渲染提示词时自动回退到内置提示词。）
 
 ---
 
@@ -307,11 +322,11 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
     "legal-hallucination": {
       "command": "python",
       "args": ["-m", "legal_hallucination_mcp.server"],
-      "cwd": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp",
+      "cwd": "<VAULT>\\legal-hallucination-mcp",
       "env": {
-        "PYTHONPATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\legal-hallucination-mcp\\src",
-        "EVIDENCE_MANIFEST_PATH": "C:\\Users\\stere\\Documents\\Obsidian Vault\\.trae\\evidence_manifest.md",
-        "VAULT_ROOT": "C:\\Users\\stere\\Documents\\Obsidian Vault"
+        "PYTHONPATH": "<VAULT>\\legal-hallucination-mcp\\src",
+        "EVIDENCE_MANIFEST_PATH": "<VAULT>\\.trae\\evidence_manifest.md",
+        "VAULT_ROOT": "<VAULT>"
       }
     }
   }
@@ -337,10 +352,10 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 调用工具: run_rule_engine_full
 参数:
   document_text: <判决书全文>
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
-  document_name: "V42_模拟二审判决书_苏06民终6271号"
-  content_summary: "苏06民终6271号劳动争议二审模拟判决书"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
+  document_name: "V42_模拟二审判决书_苏06民终9101号"
+  content_summary: "苏06民终9101号劳动争议二审模拟判决书"
   agent_name: "TraeCN"
   llm_version: "DSV4P"
   save_report: true
@@ -366,7 +381,7 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 ```
 
 生成的报告保存在 `output/` 目录，文件名格式：
-`TraeCN_DSV4P_苏06民终6271号劳动争议二审模拟判决书_V42_20260530.md`
+`TraeCN_DSV4P_苏06民终9101号劳动争议二审模拟判决书_V42_20260530.md`
 
 ### 示例二：命令行审计判决书草稿
 
@@ -374,9 +389,9 @@ h6_nontext_evidence_fail.md    # 非文本证据穿透失败
 
 ```bash
 python scripts/verify_agent.py \
-  --vault-root "C:\Users\stere\Documents\Obsidian Vault" \
-  --manifest "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md" \
-  --draft "C:\Users\stere\Documents\Obsidian Vault\output\V42_模拟二审判决书.md"
+  --vault-root "<VAULT>" \
+  --manifest "<VAULT>\.trae\evidence_manifest.md" \
+  --draft "<VAULT>\output\V42_模拟二审判决书.md"
 ```
 
 **输出示例（AUDIT_PASSED）**：
@@ -417,7 +432,7 @@ python scripts/verify_agent.py \
 python scripts/multi_version_scan.py
 ```
 
-脚本会自动扫描 `output/` 目录下的所有版本，使用 `ThreadPoolExecutor`（最多 4 个 worker）并行执行六维规则引擎检测。
+脚本会自动扫描 `output/` 目录下的所有版本，使用 `ThreadPoolExecutor`（最多 4 个 worker）并行执行八维规则引擎检测。
 
 **输出示例**：
 
@@ -450,7 +465,7 @@ python scripts/multi_version_scan.py
 python -c "
 from legal_hallucination_mcp.server import init_case_workspace
 result = init_case_workspace(
-    vault_root='C:\\\\Users\\\\stere\\\\Documents\\\\Obsidian Vault',
+    vault_root='<VAULT>',
     case_name='苏06民终9999号',
     evidence_files=[
         '证据材料/证据1_劳动合同.pdf',
@@ -466,8 +481,8 @@ print(result)
 **输出示例**：
 ```
 [WorkspaceInit] 工作区初始化完成
-- 案件目录: C:\Users\stere\Documents\Obsidian Vault\苏06民终9999号
-- 证据索引: C:\Users\stere\Documents\Obsidian Vault\苏06民终9999号\evidence_manifest.md
+- 案件目录: <VAULT>\苏06民终9999号
+- 证据索引: <VAULT>\苏06民终9999号\evidence_manifest.md
 - 已注册证据: 3 份
 - 已链接诉状: 1 份
 ```
@@ -501,8 +516,8 @@ python scripts/update_evidence_manifest.py --update "证据30" --desc "股东会
 ```
 调用工具: get_closed_universe_prompt
 参数:
-  manifest_path: "C:\Users\stere\Documents\Obsidian Vault\.trae\evidence_manifest.md"
-  vault_root: "C:\Users\stere\Documents\Obsidian Vault"
+  manifest_path: "<VAULT>\.trae\evidence_manifest.md"
+  vault_root: "<VAULT>"
 ```
 
 该工具返回一段可直接注入 Agent 系统提示的文本，包含当前案件的完整证据清单和强制证据绑定规则。
@@ -673,12 +688,14 @@ python scripts/update_evidence_manifest.py --update "证据30" --desc "股东会
 7. **主观修辞检测（H-4）** — 道德评价、意图推断、情感化修辞
 8. **诉求边界检测（H-5）** — 判决金额是否超出诉请上限
 9. **非文本证据穿透检测（H-6）** — 录音/录像等是否标注来源
-10. **交叉验证与原始文件核对** — 事实陈述与证据材料的多源比对
-11. **法律知识库验证** — 法条引用与知识库原文比对
-12. **各维度详细标志** — 每个标志的原文、位置、严重程度
-13. **综合修正建议** — 按优先级排列的修正建议
-14. **紧急修复优先级** — P0至P3分级修复指引
-15. **文书生成后自检清单** — A-F六类自检项
+10. **裁判结果—援引依据一致性检测（H-7）** — 判决主文判项在说理部分是否有依据支撑
+11. **诉请—判决回应一致性检测（H-8）** — 诉讼请求是否逐项获处置、变更诉请是否审理
+12. **交叉验证与原始文件核对** — 事实陈述与证据材料的多源比对
+13. **法律知识库验证** — 法条引用与知识库原文比对
+14. **各维度详细标志** — 每个标志的原文、位置、严重程度
+15. **综合修正建议** — 按优先级排列的修正建议
+16. **紧急修复优先级** — P0至P3分级修复指引
+17. **文书生成后自检清单** — A-F六类自检项
 
 报告文件名规范：`{AI Agent名}_{LLM名版本号}_{内容概要}_{版本号}_{YYYYMMDD}.md`
 
@@ -718,7 +735,7 @@ python scripts/update_evidence_manifest.py --update "证据30" --desc "股东会
 - `路径/法律法规/法律名称.md`
 
 ## 类案类
-- `路径/类案/（2020）苏03民终3088号.md`
+- `路径/类案/（2020）苏03民终9104号.md`
 ```
 
 ---
@@ -926,7 +943,7 @@ git commit -m "test: 增加上诉期超期检测测试用例"
 - `README_EN.md` — 英文文档（需与中文同步）
 - `CHANGELOG.md` — 版本更新日志
 - `docs/` — 开发计划、操作手册等深度文档
-- `skills/dimensions/` — 各维度检测技能模板
+- `src/legal_hallucination_mcp/skills/dimensions/` — 各维度检测技能模板
 
 ### CI 流程
 

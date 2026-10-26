@@ -20,11 +20,11 @@ MCP_ROOT = os.path.dirname(os.path.abspath(__file__))
 DOCUMENTS = [
     {
         "name": "V40",
-        "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终6271号劳动争议_20260525.md"),
+        "path": os.path.join(VAULT_ROOT, "V40_模拟二审判决书_苏06民终9101号劳动争议_20260525.md"),
     },
     {
         "name": "V42",
-        "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终6271号劳动争议_20260528.md"),
+        "path": os.path.join(VAULT_ROOT, "V42_模拟二审判决书_苏06民终9101号劳动争议_20260528.md"),
     },
 ]
 

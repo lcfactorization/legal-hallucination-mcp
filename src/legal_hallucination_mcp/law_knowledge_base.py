@@ -248,23 +248,31 @@ class LawKnowledgeBase:
         total_files = 0
         total_articles = 0
         total_cases = 0
+        docx_skipped: list[str] = []
 
         for root, dirs, files in os.walk(ld):
             current_depth = os.path.normpath(root).count(os.sep) - os.path.normpath(ld).count(os.sep)
             if current_depth >= 3:
                 dirs.clear()
             for fname in files:
-                if not fname.endswith(('.md', '.txt')):
-                    continue
-
                 fpath = os.path.join(root, fname)
-                total_files += 1
 
-                try:
-                    with open(fpath, encoding="utf-8") as f:
-                        content = f.read()
-                except (OSError, UnicodeDecodeError) as e:
-                    logger.warning("LawKnowledgeBase: failed to read %s: %s", fname, e)
+                if fname.lower().endswith('.docx'):
+                    total_files += 1
+                    content = self._read_docx_text(fpath)
+                    if content is None:
+                        # python-docx 未安装：跳过 .docx，不作为硬依赖
+                        docx_skipped.append(fname)
+                        continue
+                elif fname.endswith(('.md', '.txt')):
+                    total_files += 1
+                    try:
+                        with open(fpath, encoding="utf-8") as f:
+                            content = f.read()
+                    except (OSError, UnicodeDecodeError) as e:
+                        logger.warning("LawKnowledgeBase: failed to read %s: %s", fname, e)
+                        continue
+                else:
                     continue
 
                 articles = self._parse_law_articles(content, fpath)
@@ -272,6 +280,14 @@ class LawKnowledgeBase:
 
                 cases = self._parse_cases(content, fpath)
                 total_cases += len(cases)
+
+        if docx_skipped:
+            logger.warning(
+                "LawKnowledgeBase: python-docx未安装，已跳过%d个.docx文件（%s等）。"
+                "如需加载.docx法规文件，请安装可选依赖：pip install python-docx "
+                "或 pip install 'legal-hallucination-mcp[docx]'",
+                len(docx_skipped), "、".join(docx_skipped[:5]),
+            )
 
         self._build_index()
         self.loaded = True
@@ -287,6 +303,24 @@ class LawKnowledgeBase:
             "cases": total_cases,
             "files": total_files,
         }
+
+    def _read_docx_text(self, fpath: str) -> str | None:
+        """惰性导入 python-docx 提取 .docx 纯文本（按段落拼接）。
+
+        Returns:
+            文本内容；python-docx 未安装时返回 None（由调用方汇总 warning，
+            .docx 不作为硬依赖）；文件解析失败时返回 ""（记录 warning，不影响其余文件）。
+        """
+        try:
+            from docx import Document  # noqa: PLC0415 — 惰性导入，python-docx 为可选依赖
+        except ImportError:
+            return None
+        try:
+            doc = Document(fpath)
+        except Exception as e:  # noqa: BLE001 — 单个损坏文件不应中断整个法规库加载
+            logger.warning("LawKnowledgeBase: failed to parse docx %s: %s", fpath, e)
+            return ""
+        return "\n".join(p.text for p in doc.paragraphs)
 
     def _parse_law_articles(self, content: str, source_file: str) -> list[LawArticle]:
         articles = []

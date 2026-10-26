@@ -10,6 +10,11 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent
 
+# 占位路径常量：用于文档与脚本示例，不代表任何真实机器上的路径。
+# PLACEHOLDER_PROJECT 对应本仓库在本机的检出位置，真实绝对路径不入库。
+PLACEHOLDER_VAULT = "<VAULT>"
+PLACEHOLDER_PROJECT = PLACEHOLDER_VAULT + "/legal-hallucination-mcp"
+
 
 def get_vault_root() -> str:
     return os.environ.get(
@@ -42,5 +47,5 @@ def get_law_dir() -> str:
 def get_doc_path(version: str) -> str:
     return os.environ.get(
         f"DOC_PATH_{version}",
-        os.path.join(get_vault_root(), f"{version}_模拟二审判决书_苏06民终6271号劳动争议"),
+        os.path.join(get_vault_root(), f"{version}_模拟二审判决书_苏06民终9101号劳动争议"),
     )
