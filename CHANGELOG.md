@@ -301,3 +301,7 @@
 | TestTimeBarDetection失败 | 优化日期提取正则，支持"日期+关键词"和"关键词+日期"两种模式 |
 | TestClaimParser.test_fuzzy_match失败 | 改进模糊匹配方法，使用2-4字滑动窗口 |
 | TestReportFilenameConvention失败 | 将 `topic` 参数改为 `content_summary` |
+
+## [V44.1] - 2026-10-26
+### Added
+- calculate_hallucination_score 红旗一票否决/下限层：任一 critical 旗标触发综合分下限 60、风险等级不优于 D；H-1/H-7/H-8 出现 critical 时升级 veto 级红旗提示。新增输出字段 red_flag_level / red_flag_messages / critical_flag_count / score_floor_applied，防止核心严重信号被加权平均稀释。

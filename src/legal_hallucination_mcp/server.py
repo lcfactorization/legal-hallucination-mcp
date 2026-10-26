@@ -560,6 +560,58 @@ def calculate_hallucination_score(
                 final_desc = desc
                 break
 
+        # 红旗一票否决/下限层（2026-10-26）：critical 信号不被加权分稀释。
+        # 递归扫描规则与语义结果中 severity==critical 的旗标，避免依赖单一字段路径。
+        def _iter_critical_flags(obj):
+            if isinstance(obj, dict):
+                if obj.get("severity") == "critical":
+                    yield obj
+                for v in obj.values():
+                    yield from _iter_critical_flags(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    yield from _iter_critical_flags(item)
+
+        veto_dims = ("H-1", "H-7", "H-8")
+        critical_flags = list(_iter_critical_flags(rule_data))
+        for sem in semantic_data:
+            for flag in sem.get("flags", []):
+                if flag.get("severity") == "critical":
+                    entry = dict(flag)
+                    entry.setdefault("dimension", sem.get("dimension", ""))
+                    critical_flags.append(entry)
+
+        red_flag_level = None
+        red_flag_messages = []
+        floor_applied = False
+        if critical_flags:
+            if total_score < 60.0:
+                total_score = 60.0
+                floor_applied = True
+            for grade, (low, high, desc) in RISK_GRADES.items():
+                if low <= total_score < high:
+                    final_grade = grade
+                    final_desc = desc
+                    break
+            if final_grade in ("A", "B", "C"):
+                final_grade = "D"
+                final_desc = RISK_GRADES["D"][2]
+            veto_flags = [
+                f for f in critical_flags
+                if any(d in str(f.get("dimension") or f.get("code") or "") for d in veto_dims)
+            ]
+            if veto_flags:
+                red_flag_level = "veto"
+                red_flag_messages.append(
+                    "存在无源编造(H-1)/裁判结果无依据支撑(H-7)/诉讼请求未回应(H-8)的critical信号，"
+                    "风险等级不受加权分稀释（红旗一票否决，等级强制不优于D、分数下限60）。"
+                )
+            else:
+                red_flag_level = "warning"
+                red_flag_messages.append(
+                    "存在critical级幻觉风险信号，综合分已执行下限60、等级不优于D。"
+                )
+
         return json.dumps({
             "success": True,
             "rule_score": base_score,
@@ -567,6 +619,10 @@ def calculate_hallucination_score(
             "total_score": round(total_score, 1),
             "risk_grade": final_grade,
             "risk_description": final_desc,
+            "red_flag_level": red_flag_level,
+            "red_flag_messages": red_flag_messages,
+            "critical_flag_count": len(critical_flags),
+            "score_floor_applied": floor_applied,
         }, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error("calculate_hallucination_score: %s", e, exc_info=True)
